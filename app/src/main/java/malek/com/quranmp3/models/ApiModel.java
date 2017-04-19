@@ -1,4 +1,4 @@
-package mdweb.com.quranmp3.models;
+package malek.com.quranmp3.models;
 
 /**
  * Created by lenovo on 14/05/2016.

@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
 
-    tools:context="mdweb.com.quranmp3.QuraActivity">
+    tools:context="malek.com.quranmp3.QuraActivity">
 
     <android.support.v7.widget.RecyclerView
         android:id="@+id/recycler"
