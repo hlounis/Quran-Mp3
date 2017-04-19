@@ -6,25 +6,22 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
-import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ListView;
 
-import java.util.ArrayList;
+import org.json.JSONObject;
+
+import java.util.List;
 
 import mdweb.com.quranmp3.adapter.QuraAdapter;
-import mdweb.com.quranmp3.models.Qura;
-import mdweb.com.quranmp3.tools.JsonRequestHelper;
+import mdweb.com.quranmp3.models.ApiModel;
 import mdweb.com.quranmp3.tools.RecylerViewClickItem;
 
 public class ListViewActivity extends AppCompatActivity implements RecylerViewClickItem {
-    protected ArrayList<Qura> data;
+    protected List<ApiModel> data;
     protected ProgressDialog progressDialog;
-    protected JsonRequestHelper jsonRequestHelper;
     protected boolean runing = true;
     protected RecyclerView listViewQuray;
     protected boolean downloaded = false;
-    protected String jsonDownload;
+    protected JSONObject jsonDownload;
     protected QuraAdapter quraAdapter;
 
 
@@ -34,7 +31,7 @@ public class ListViewActivity extends AppCompatActivity implements RecylerViewCl
         setContentView(R.layout.activity_qura);
         setData();
         quraAdapter = new QuraAdapter(this, R.layout.item_list, data);
-        listViewQuray = (RecyclerView) findViewById(R.id.listQura);
+        listViewQuray = (RecyclerView) findViewById(R.id.recycler);
         listViewQuray.setLayoutManager(new LinearLayoutManager(this));
         if (listViewQuray != null) {
             listViewQuray.setAdapter(quraAdapter);
@@ -55,8 +52,6 @@ public class ListViewActivity extends AppCompatActivity implements RecylerViewCl
             if (!jsonDownload.equals(""))
                 passage();
         }
-
-
     }
 
     @Override
@@ -71,12 +66,11 @@ public class ListViewActivity extends AppCompatActivity implements RecylerViewCl
 
     @Override
     public void onClickItem(int position) {
-        Log.d("onclikItem",position+"");
+        Log.d("onclikItem", position + "");
         progressDialog = new ProgressDialog(this);
         progressDialog.setMessage("Loading");
         progressDialog.show();
         progressDialog.setCancelable(false);
-        jsonRequestHelper = new JsonRequestHelper(this);
         listViewQuray.setEnabled(false);
 
     }

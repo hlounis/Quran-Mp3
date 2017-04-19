@@ -2,15 +2,17 @@ package mdweb.com.quranmp3;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.View;
-import android.widget.AdapterView;
 
+import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import mdweb.com.quranmp3.tools.DataParser;
-import mdweb.com.quranmp3.tools.ResponseCompleteInterface;
 import mdweb.com.quranmp3.tools.Urls;
+import mdweb.com.quranmp3.tools.VolleySingleton;
 
 public class RecitationActivity extends ListViewActivity {
 
@@ -21,15 +23,11 @@ public class RecitationActivity extends ListViewActivity {
 
     @Override
     public void setData() {
-        data = DataParser.getListQura(getIntent().getExtras().getString("response"), Urls.cle_recitation, Urls.cle_Qura_Url,false);
-    }
-
-    @Override
-    public void onBackPressed() {
-        Intent intent = new Intent(this, QuraActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        startActivity(intent);
-        finish();
+        try {
+            data = DataParser.createList(new JSONObject(getIntent().getExtras().getString("response")), Urls.cle_recitation, Urls.cle_Qura_Url, false);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -37,38 +35,32 @@ public class RecitationActivity extends ListViewActivity {
         super.passage();
         progressDialog.dismiss();
         Intent intent = new Intent(RecitationActivity.this, SwarActivity.class);
-        intent.putExtra("JsonSwar", jsonDownload);
-        intent.putExtra("JsonRecitation", getIntent().getExtras().getString("response"));
-        startActivity(intent);
+        intent.putExtra("JsonSwar", jsonDownload.toString());
+        startActivityForResult(intent, SwarActivity.REQUEST_CODE_SWAR);
         listViewQuray.setEnabled(true);
     }
 
     @Override
     public void onClickItem(int position) {
         super.onClickItem(position);
-        jsonRequestHelper.makeStringRequestGet(data.get(position).getApi_url(), null, new ResponseCompleteInterface() {
+        VolleySingleton.getInstance(this).addToRequestQueue(new JsonObjectRequest(data.get(position).getApi_url(), null, new Response.Listener<JSONObject>() {
             @Override
-            public void onResponseComplete(String response) {
-                Log.d("reponse", response + "");
+            public void onResponse(JSONObject response, Object o) {
                 jsonDownload = response;
                 downloaded = true;
                 if (progressDialog.isShowing() && runing) {
                     passage();
                 }
-
-
             }
-
+        }, new Response.ErrorListener() {
             @Override
-            public void onError(VolleyError volleyError) {
+            public void onErrorResponse(VolleyError volleyError, Object o) {
                 if (progressDialog.isShowing() && runing) {
                     progressDialog.dismiss();
                     listViewQuray.setEnabled(true);
                 }
-
-
             }
-        });
+        }));
 
 
     }

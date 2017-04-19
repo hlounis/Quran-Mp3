@@ -8,18 +8,18 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.AdapterView;
 
+import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 
-import mdweb.com.quranmp3.models.Qura;
+import mdweb.com.quranmp3.models.ApiModel;
 import mdweb.com.quranmp3.tools.DataParser;
-import mdweb.com.quranmp3.tools.LocalFilesManager;
-import mdweb.com.quranmp3.tools.ResponseCompleteInterface;
-import mdweb.com.quranmp3.tools.Urls;
+import mdweb.com.quranmp3.tools.VolleySingleton;
 
 public class QuraActivity extends ListViewActivity implements SearchView.OnQueryTextListener {
 
@@ -27,7 +27,7 @@ public class QuraActivity extends ListViewActivity implements SearchView.OnQuery
     private MenuItem searchMenuItem;
     private SearchView mSearchView;
     private String url;
-    private Qura quraCurent;
+    private ApiModel apiModelCurent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,7 +58,7 @@ public class QuraActivity extends ListViewActivity implements SearchView.OnQuery
 
     @Override
     public void setData() {
-        data = DataParser.getListQura(new LocalFilesManager(this).getFileContentText(Urls.File_Qura), Urls.cle_Qura, Urls.cle_Qura_Url, true);
+        data = DataParser.getInstance().getApiModels();
     }
 
 
@@ -67,59 +67,50 @@ public class QuraActivity extends ListViewActivity implements SearchView.OnQuery
         super.passage();
         progressDialog.dismiss();
         Intent intent;
-        if (quraCurent.getCount() == 1) {
+        int requestCode = 9;
+        String key = "JsonSwar";
+        if (apiModelCurent.getCount() == 1) {
             intent = new Intent(QuraActivity.this, SwarActivity.class);
-            intent.putExtra("JsonSwar", jsonDownload);
-            intent.putExtra("comeQura",true);
+            requestCode = SwarActivity.REQUEST_CODE_SWAR;
         } else {
             intent = new Intent(QuraActivity.this, RecitationActivity.class);
-            intent.putExtra("response", jsonDownload);
+            key = "response";
         }
-        startActivity(intent);
-        finish();
+        intent.putExtra(key, jsonDownload.toString());
+        startActivityForResult(intent, requestCode);
     }
 
-    @Override
-    public void onBackPressed() {
-        finish();
-    }
 
     @Override
     public void onClickItem(int position) {
         super.onClickItem(position);
-        quraCurent = quraAdapter.getQuras().get(position);
-        if (quraAdapter.getQuras().get(position).getCount() == 1) {
-            url = quraCurent.getApi_url().substring(0, quraCurent.getApi_url().indexOf("get-author"));
-            url = url + "get-recitation/" + quraCurent.getUniqueResitance() + "/ar/json/";
-            Log.d("url", url);
-
+        apiModelCurent = quraAdapter.getApiModels().get(position);
+        if (quraAdapter.getApiModels().get(position).getCount() == 1) {
+            url = apiModelCurent.getApi_url().substring(0, apiModelCurent.getApi_url().indexOf("get-author"));
+            url = url + "get-recitation/" + apiModelCurent.getUniqueResitance() + "/ar/json/";
         } else {
-            url = quraCurent.getApi_url();
+            url = apiModelCurent.getApi_url();
         }
-        jsonRequestHelper.makeStringRequestGet(url, null, new ResponseCompleteInterface() {
+        VolleySingleton.getInstance(this).addToRequestQueue(new JsonObjectRequest(url, null, new Response.Listener<JSONObject>() {
             @Override
-            public void onResponseComplete(String response) {
+            public void onResponse(JSONObject response, Object o) {
                 jsonDownload = response;
                 downloaded = true;
                 if (progressDialog.isShowing() && runing) {
                     passage();
                     listViewQuray.setEnabled(true);
                 }
-
-
             }
-
+        }, new Response.ErrorListener() {
             @Override
-            public void onError(VolleyError volleyError) {
+            public void onErrorResponse(VolleyError volleyError, Object o) {
                 if (runing) {
                     if (progressDialog.isShowing())
                         progressDialog.dismiss();
                     listViewQuray.setEnabled(true);
                 }
-
-
             }
-        });
+        }));
     }
 
 
@@ -131,21 +122,21 @@ public class QuraActivity extends ListViewActivity implements SearchView.OnQuery
     @Override
     public boolean onQueryTextChange(String newText) {
         Log.d("newText", newText);
-        ArrayList<Qura> qurasFiltred = new ArrayList<>();
+        ArrayList<ApiModel> qurasFiltred = new ArrayList<>();
         if (newText.length() > 0) {
 
-            for (Qura qura : data) {
-                if (qura.getTitle().contains(newText)) {
+            for (ApiModel apiModel : data) {
+                if (apiModel.getTitle().contains(newText)) {
 
-                    qurasFiltred.add(qura);
+                    qurasFiltred.add(apiModel);
 
                 }
             }
-            quraAdapter.setQuras(qurasFiltred);
+            quraAdapter.setApiModels(qurasFiltred);
             quraAdapter.notifyDataSetChanged();
 
         } else {
-            quraAdapter.setQuras(data);
+            quraAdapter.setApiModels(data);
             quraAdapter.notifyDataSetChanged();
 
         }

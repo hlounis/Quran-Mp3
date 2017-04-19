@@ -3,7 +3,6 @@ package mdweb.com.quranmp3;
 import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -22,17 +21,21 @@ import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
-import mdweb.com.quranmp3.models.Qura;
+import mdweb.com.quranmp3.models.ApiModel;
 import mdweb.com.quranmp3.tools.DataParser;
 import mdweb.com.quranmp3.tools.Urls;
 
 public class SwarActivity extends ListViewActivity implements MediaPlayer.OnPreparedListener, DialogInterface.OnDismissListener, SeekBar.OnSeekBarChangeListener, View.OnClickListener, MediaPlayer.OnErrorListener, SearchView.OnQueryTextListener {
 
+    public final static int REQUEST_CODE_SWAR = 10;
     private int positionSelected;
     private Dialog audioDialog;
     private TextView titreAudio;
@@ -52,22 +55,11 @@ public class SwarActivity extends ListViewActivity implements MediaPlayer.OnPrep
 
     @Override
     public void setData() {
-        data = DataParser.getListQura(getIntent().getExtras().getString("JsonSwar"), Urls.cle_Swar, Urls.cle_Swar_Url, false);
-
-    }
-
-    @Override
-    public void onBackPressed() {
-        Intent intent;
-        if (getIntent().getExtras().getBoolean("comeQura")) {
-            intent = new Intent(this, QuraActivity.class);
-        } else {
-            intent = new Intent(this, RecitationActivity.class);
-            intent.putExtra("response", getIntent().getExtras().getString("JsonRecitation"));
+        try {
+            data = DataParser.createList(new JSONObject(getIntent().getExtras().getString("JsonSwar")), Urls.cle_Swar, Urls.cle_Swar_Url, false);
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        startActivity(intent);
-        finish();
 
     }
 
@@ -83,14 +75,14 @@ public class SwarActivity extends ListViewActivity implements MediaPlayer.OnPrep
         //titre de l'audio
         titreAudio = (TextView) audioDialog.findViewById(R.id.titreAudio);
         timerAudio = (TextView) audioDialog.findViewById(R.id.timerAudio);
-        titreAudio.setText(quraAdapter.getQuras().get(position).getTitle());
+        titreAudio.setText(quraAdapter.getApiModels().get(position).getTitle());
         // seekBar de l'audio
         seekBarAudio = (SeekBar) audioDialog.findViewById(R.id.seekBarAudio);
         audioDialog.setCancelable(false);
         mediaPlayer = new MediaPlayer();
         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
         try {
-            mediaPlayer.setDataSource(quraAdapter.getQuras().get(position).getApi_url());
+            mediaPlayer.setDataSource(quraAdapter.getApiModels().get(position).getApi_url());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -134,7 +126,7 @@ public class SwarActivity extends ListViewActivity implements MediaPlayer.OnPrep
 
     @Override
     public void onPrepared(MediaPlayer mp) {
-         prepared = true;
+        prepared = true;
         if (progressDialog.isShowing()) {
             progressDialog.dismiss();
         }
@@ -297,21 +289,21 @@ public class SwarActivity extends ListViewActivity implements MediaPlayer.OnPrep
     @Override
     public boolean onQueryTextChange(String newText) {
         Log.d("newText", newText);
-        ArrayList<Qura> qurasFiltred = new ArrayList<>();
+        ArrayList<ApiModel> qurasFiltred = new ArrayList<>();
         if (newText.length() > 0) {
 
-            for (Qura qura : data) {
-                if (qura.getTitle().contains(newText)) {
+            for (ApiModel apiModel : data) {
+                if (apiModel.getTitle().contains(newText)) {
 
-                    qurasFiltred.add(qura);
+                    qurasFiltred.add(apiModel);
 
                 }
             }
-            quraAdapter.setQuras(qurasFiltred);
+            quraAdapter.setApiModels(qurasFiltred);
             quraAdapter.notifyDataSetChanged();
 
         } else {
-            quraAdapter.setQuras(data);
+            quraAdapter.setApiModels(data);
             quraAdapter.notifyDataSetChanged();
 
         }

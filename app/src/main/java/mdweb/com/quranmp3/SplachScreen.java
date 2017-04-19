@@ -2,14 +2,18 @@ package mdweb.com.quranmp3;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
+import android.widget.Toast;
 
+import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
 
-import mdweb.com.quranmp3.tools.JsonRequestHelper;
-import mdweb.com.quranmp3.tools.ResponseCompleteInterface;
+import org.json.JSONObject;
+
+import mdweb.com.quranmp3.tools.DataParser;
 import mdweb.com.quranmp3.tools.Urls;
+import mdweb.com.quranmp3.tools.VolleySingleton;
 
 public class SplachScreen extends AppCompatActivity {
 
@@ -17,25 +21,22 @@ public class SplachScreen extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        JsonRequestHelper jsonRequestHelper = new JsonRequestHelper(this);
-        jsonRequestHelper.makeStringRequestGet(Urls.Url_Qura, Urls.File_Qura, new ResponseCompleteInterface() {
+        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Urls.Url_Qura, null, new Response.Listener<JSONObject>() {
             @Override
-            public void onResponseComplete(String response) {
+            public void onResponse(JSONObject jsonObject, Object o) {
+                Intent intent = new Intent(SplachScreen.this, QuraActivity.class);
+                startActivity(intent);
+                DataParser.getInstance().setListQuraJson(jsonObject);
+                finish();
 
             }
-
+        }, new Response.ErrorListener() {
             @Override
-            public void onError(VolleyError volleyError) {
-
+            public void onErrorResponse(VolleyError volleyError, Object o) {
+                Toast.makeText(SplachScreen.this, "Connection problem", Toast.LENGTH_LONG).show();
             }
         });
-        new Handler().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                Intent intent =new Intent(SplachScreen.this,QuraActivity.class);
-                startActivity(intent);
-                finish();
-            }
-        },3000);
+        VolleySingleton.getInstance(this).addToRequestQueue(jsonObjectRequest);
+
     }
 }

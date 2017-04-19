@@ -1,20 +1,16 @@
 package mdweb.com.quranmp3.adapter;
 
-import android.app.Activity;
 import android.content.Context;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
-import android.widget.ImageView;
 import android.widget.TextView;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import mdweb.com.quranmp3.R;
-import mdweb.com.quranmp3.models.Qura;
+import mdweb.com.quranmp3.models.ApiModel;
 import mdweb.com.quranmp3.tools.RecylerViewClickItem;
 
 /**
@@ -23,30 +19,26 @@ import mdweb.com.quranmp3.tools.RecylerViewClickItem;
 public class QuraAdapter extends RecyclerView.Adapter<QuraAdapter.ViewHolder> {
     private Context context;
     private int resource;
+    private List<ApiModel> apiModels;
+    private RecylerViewClickItem recylerViewClickItem;
 
-    public void setQuras(ArrayList<Qura> quras) {
-        this.quras = quras;
+    public QuraAdapter(Context context, int resource, List<ApiModel> apiModels) {
+        this.context = context;
+        this.resource = resource;
+        this.apiModels = apiModels;
     }
 
-    public ArrayList<Qura> getQuras() {
-        return quras;
+    public List<ApiModel> getApiModels() {
+        return apiModels;
     }
 
-    private ArrayList<Qura> quras;
+    public void setApiModels(List<ApiModel> apiModels) {
+        this.apiModels = apiModels;
+    }
 
     public void setRecylerViewClickItem(RecylerViewClickItem recylerViewClickItem) {
         this.recylerViewClickItem = recylerViewClickItem;
     }
-
-    private RecylerViewClickItem recylerViewClickItem;
-
-
-    public QuraAdapter(Context context, int resource, ArrayList<Qura> quras) {
-        this.context = context;
-        this.resource = resource;
-        this.quras = quras;
-    }
-
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
@@ -56,7 +48,7 @@ public class QuraAdapter extends RecyclerView.Adapter<QuraAdapter.ViewHolder> {
 
     @Override
     public void onBindViewHolder(ViewHolder holder, final int position) {
-        holder.titre.setText(quras.get(position).getTitle());
+        holder.titre.setText(apiModels.get(position).getTitle());
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -69,7 +61,7 @@ public class QuraAdapter extends RecyclerView.Adapter<QuraAdapter.ViewHolder> {
 
     @Override
     public int getItemCount() {
-        return quras.size();
+        return apiModels.size();
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {

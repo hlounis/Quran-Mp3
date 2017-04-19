@@ -5,40 +5,53 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.List;
 
-import mdweb.com.quranmp3.models.Qura;
+import mdweb.com.quranmp3.models.ApiModel;
 
-/**
- * Created by lenovo on 14/05/2016.
- */
+
 public class DataParser {
-    public DataParser() {
+    private static DataParser instance = null;
+
+
+    private List<ApiModel> apiModels;
+
+
+    private JSONObject listQuraJson;
+
+    protected DataParser() {
 
     }
 
-    public static ArrayList<Qura> getListQura(String file, String cleGeneral, String cleUrl,boolean hasCount) {
-        ArrayList<Qura> quars = new ArrayList<>();
-        if (file != null)
+    public static DataParser getInstance() {
+        if (instance == null) {
+            instance = new DataParser();
+        }
+        return instance;
+    }
+
+    public static List<ApiModel> createList(JSONObject jsonObject, String cleGeneral, String cleUrl, boolean hasCount) {
+        ArrayList<ApiModel> quars = new ArrayList<>();
+        if (jsonObject != null)
             try {
-                JSONObject jsonObject = new JSONObject(file);
                 JSONArray qurayJsonArray = jsonObject.getJSONArray(cleGeneral);
                 for (int i = 0; i < qurayJsonArray.length(); i++) {
                     JSONObject qurajsonObject = qurayJsonArray.getJSONObject(i);
-                    Qura qura = new Qura();
-                    qura.setTitle(qurajsonObject.getString("title"));
-                    qura.setApi_url(qurajsonObject.getString(cleUrl));
+                    ApiModel apiModel = new ApiModel();
+                    apiModel.setTitle(qurajsonObject.getString("title"));
+                    apiModel.setApi_url(qurajsonObject.getString(cleUrl));
 
                     if (hasCount) {
-                        qura.setCount(qurajsonObject.getJSONObject("recitations_info").getInt("count"));
-                        if (qura.getCount()==1) {
+                        apiModel.setCount(qurajsonObject.getJSONObject("recitations_info").getInt("count"));
+                        if (apiModel.getCount() == 1) {
                             JSONArray jsonArray = qurajsonObject.getJSONObject("recitations_info").getJSONArray("recitations_ids");
                             if (jsonArray.length() > 0) {
-                                qura.setUniqueResitance(jsonArray.getInt(0));
+                                apiModel.setUniqueResitance(jsonArray.getInt(0));
                             }
                         }
                     }
 
-                    quars.add(qura);
+                    quars.add(apiModel);
 
                 }
             } catch (JSONException e) {
@@ -46,5 +59,22 @@ public class DataParser {
             }
 
         return quars;
+    }
+
+    public JSONObject getListQuraJson() {
+        return listQuraJson;
+    }
+
+    public void setListQuraJson(JSONObject listQuraJson) {
+        this.listQuraJson = listQuraJson;
+        apiModels = createList(listQuraJson, Urls.cle_Qura, Urls.cle_Qura_Url, true);
+    }
+
+    public List<ApiModel> getApiModels() {
+        return apiModels;
+    }
+
+    public void setApiModels(List<ApiModel> apiModels) {
+        this.apiModels = apiModels;
     }
 }
