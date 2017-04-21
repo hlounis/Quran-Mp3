@@ -2,10 +2,15 @@ package malek.com.quranmp3;
 
 import android.app.Dialog;
 import android.app.ProgressDialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.support.v7.widget.SearchView;
 import android.util.Log;
@@ -26,12 +31,16 @@ import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 import malek.com.quranmp3.models.ApiModel;
+import malek.com.quranmp3.tools.NotifcationTools;
 import malek.com.quranmp3.tools.Urls;
 
 public class SwarActivity extends ListViewActivity implements MediaPlayer.OnPreparedListener, DialogInterface.OnDismissListener, SeekBar.OnSeekBarChangeListener, View.OnClickListener, MediaPlayer.OnErrorListener, SearchView.OnQueryTextListener {
 
     public final static int REQUEST_CODE_SWAR = 10;
     public static final String KEY_INTENT = "JsonSwar";
+    public final static String PREC_NOTIF = "prec";
+    public final static String NEXT_NOTIF = "next";
+    public final static String PLAY_NOTIF = "play";
     private int positionSelected;
     private Dialog audioDialog;
     private TextView titreAudio;
@@ -40,7 +49,59 @@ public class SwarActivity extends ListViewActivity implements MediaPlayer.OnPrep
     private MediaPlayer mediaPlayer;
     private ImageView playBtn;
     private CountDownTimer countDownTimerPlayer;
+    private BroadcastReceiver notifcationReciver = null;
     private boolean prepared;
+    private NotifcationTools notifcationTools = null;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+
+    }
+
+
+    public void setUpNotifactionBrodcastReciver() {
+        if (notifcationReciver == null) {
+            notifcationReciver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    switch (intent.getAction()) {
+                        case PREC_NOTIF:
+                            precAudio();
+                            break;
+                        case NEXT_NOTIF:
+                            nextAudio();
+                            break;
+                        case PLAY_NOTIF:
+                            playStopAudio();
+                            break;
+                    }
+                }
+            };
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(PREC_NOTIF);
+            filter.addAction(NEXT_NOTIF);
+            filter.addAction(PLAY_NOTIF);
+            registerReceiver(notifcationReciver, filter);
+        }
+    }
+
+    public void removeBrodcastReciver() {
+        if (notifcationReciver != null) {
+            unregisterReceiver(notifcationReciver);
+            notifcationReciver = null;
+        }
+        if (notifcationTools != null) {
+            notifcationTools.clearNotifcation();
+        }
+    }
+
+    @Override
+    public void finish() {
+        super.finish();
+        removeBrodcastReciver();
+    }
 
     @Override
     public void setJsonObject() {
@@ -119,6 +180,11 @@ public class SwarActivity extends ListViewActivity implements MediaPlayer.OnPrep
     @Override
     public void onPrepared(MediaPlayer mp) {
         prepared = true;
+        if (notifcationTools == null) {
+            notifcationTools = new NotifcationTools(getApplicationContext());
+        }
+        notifcationTools.createNotif(titreAudio.getText().toString());
+        setUpNotifactionBrodcastReciver();
         if (progressDialog.isShowing()) {
             progressDialog.dismiss();
         }
@@ -192,13 +258,13 @@ public class SwarActivity extends ListViewActivity implements MediaPlayer.OnPrep
 
     public void realseMediaPlayer() {
         if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-            Log.d("onDis", "true");
             countDownTimerPlayer.cancel();
             mediaPlayer.stop();
             mediaPlayer.release();
             prepared = false;
             listViewQuray.setEnabled(true);
         }
+        removeBrodcastReciver();
     }
 
     @Override
@@ -229,29 +295,42 @@ public class SwarActivity extends ListViewActivity implements MediaPlayer.OnPrep
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.play:
-                if (mediaPlayer.isPlaying()) {
-                    playBtn.setImageResource(R.drawable.play);
-                    mediaPlayer.pause();
-                    countDownTimerPlayer.cancel();
-                } else {
-                    playBtn.setImageResource(R.drawable.pause);
-                    mediaPlayer.start();
-                    setUpDialog(mediaPlayer.getDuration());
-                }
+                playStopAudio();
                 break;
             case R.id.suivant:
-
-                positionSelected = positionSelected + 1;
-
-                passageAudio();
+                nextAudio();
                 break;
             case R.id.precedent:
-                positionSelected = positionSelected - 1;
-
-                passageAudio();
+                precAudio();
                 break;
         }
     }
+
+    public void playStopAudio() {
+        if (mediaPlayer.isPlaying()) {
+            playBtn.setImageResource(R.drawable.play);
+            mediaPlayer.pause();
+            countDownTimerPlayer.cancel();
+            notifcationTools.updateNotifIcon(R.id.playNotif, R.drawable.ic_play_arrow_black_24dp);
+        } else {
+            playBtn.setImageResource(R.drawable.pause);
+            mediaPlayer.start();
+            setUpDialog(mediaPlayer.getDuration());
+            notifcationTools.updateNotifIcon(R.id.playNotif, R.drawable.ic_pause_black_24dp);
+
+        }
+    }
+
+    public void precAudio() {
+        positionSelected = positionSelected - 1;
+        passageAudio();
+    }
+
+    public void nextAudio() {
+        positionSelected = positionSelected + 1;
+        passageAudio();
+    }
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
