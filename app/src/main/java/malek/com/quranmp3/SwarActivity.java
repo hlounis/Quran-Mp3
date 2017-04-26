@@ -34,7 +34,7 @@ import malek.com.quranmp3.models.ApiModel;
 import malek.com.quranmp3.tools.NotifcationTools;
 import malek.com.quranmp3.tools.Urls;
 
-public class SwarActivity extends ListViewActivity implements MediaPlayer.OnPreparedListener, DialogInterface.OnDismissListener, SeekBar.OnSeekBarChangeListener, View.OnClickListener, MediaPlayer.OnErrorListener, SearchView.OnQueryTextListener {
+public class SwarActivity extends ListViewActivity implements AudioManager.OnAudioFocusChangeListener, MediaPlayer.OnPreparedListener, DialogInterface.OnDismissListener, SeekBar.OnSeekBarChangeListener, View.OnClickListener, MediaPlayer.OnErrorListener, SearchView.OnQueryTextListener {
 
     public final static int REQUEST_CODE_SWAR = 10;
     public static final String KEY_INTENT = "JsonSwar";
@@ -52,11 +52,13 @@ public class SwarActivity extends ListViewActivity implements MediaPlayer.OnPrep
     private BroadcastReceiver notifcationReciver = null;
     private boolean prepared;
     private NotifcationTools notifcationTools = null;
+    private AudioManager mAudioManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
     }
 
@@ -179,6 +181,7 @@ public class SwarActivity extends ListViewActivity implements MediaPlayer.OnPrep
 
     @Override
     public void onPrepared(MediaPlayer mp) {
+        mAudioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
         prepared = true;
         if (notifcationTools == null) {
             notifcationTools = new NotifcationTools(getApplicationContext());
@@ -242,7 +245,6 @@ public class SwarActivity extends ListViewActivity implements MediaPlayer.OnPrep
             positionSelected = data.size() - 1;
         if (data.get(positionSelected) != null) {
             titreAudio.setText(data.get(positionSelected).getTitle());
-
             mediaPlayer.reset();
             try {
                 mediaPlayer.setDataSource(this, Uri.parse(data.get(positionSelected).getApi_url()));
@@ -306,17 +308,22 @@ public class SwarActivity extends ListViewActivity implements MediaPlayer.OnPrep
         }
     }
 
+    public void stopAudio() {
+        playBtn.setImageResource(R.drawable.play);
+        mediaPlayer.pause();
+        countDownTimerPlayer.cancel();
+        notifcationTools.updateNotifIcon(R.id.playNotif, R.drawable.ic_play_arrow_black_24dp);
+    }
+
     public void playStopAudio() {
         if (mediaPlayer.isPlaying()) {
-            playBtn.setImageResource(R.drawable.play);
-            mediaPlayer.pause();
-            countDownTimerPlayer.cancel();
-            notifcationTools.updateNotifIcon(R.id.playNotif, R.drawable.ic_play_arrow_black_24dp);
+            stopAudio();
         } else {
             playBtn.setImageResource(R.drawable.pause);
             mediaPlayer.start();
             setUpDialog(mediaPlayer.getDuration());
             notifcationTools.updateNotifIcon(R.id.playNotif, R.drawable.ic_pause_black_24dp);
+
 
         }
     }
@@ -379,5 +386,16 @@ public class SwarActivity extends ListViewActivity implements MediaPlayer.OnPrep
 
         }
         return false;
+    }
+
+    @Override
+    public void onAudioFocusChange(int focusChange) {
+        stopAudio();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mAudioManager.abandonAudioFocus(this);
     }
 }
