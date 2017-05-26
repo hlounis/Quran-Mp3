@@ -1,62 +1,83 @@
 package malek.com.quranmp3;
 
 import android.content.Intent;
+import android.os.Bundle;
+import android.util.Log;
 
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.JsonObjectRequest;
+import java.util.List;
 
-import org.json.JSONObject;
-
-import malek.com.quranmp3.tools.Urls;
-import malek.com.quranmp3.tools.VolleySingleton;
+import io.reactivex.ObservableSource;
+import io.reactivex.Observer;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.annotations.NonNull;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Function;
+import io.reactivex.schedulers.Schedulers;
+import malek.com.quranmp3.models.Recitation;
+import malek.com.quranmp3.models.RecitationsContainer;
+import malek.com.quranmp3.tools.RetrofitSingleton;
 
 public class RecitationActivity extends ListViewActivity {
-    public final static String KEY_INTENT = "response";
 
     @Override
-    public void setJsonObject() {
-        super.setJsonObject();
-        jsonDownload = getJsonFromIntent(KEY_INTENT);
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
     }
 
     @Override
     public void setData() {
-        creatlistAsyn(Urls.cle_recitation, Urls.cle_Qura_Url);
-    }
+        getId();
+        if (id != null) {
+            RetrofitSingleton.getInstance().getApiService().getRecitationsContainer(id)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .map(new Function<RecitationsContainer, List<Recitation>>() {
+                        @Override
+                        public List<Recitation> apply(@NonNull RecitationsContainer recitationsContainer) throws Exception {
+                            return recitationsContainer.getRecitations();
+                        }
+                    })
+                    .flatMap(new Function<List<Recitation>, ObservableSource<Recitation>>() {
+                        @Override
+                        public ObservableSource<Recitation> apply(@NonNull List<Recitation> recitations) throws Exception {
+                            return io.reactivex.Observable.fromIterable(recitations);
+                        }
+                    }).safeSubscribe(new Observer<Recitation>() {
+                @Override
+                public void onSubscribe(Disposable d) {
 
-    @Override
-    public void passage() {
-        super.passage();
-        progressDialog.dismiss();
-        Intent intent = new Intent(RecitationActivity.this, SwarActivity.class);
-        intent.putExtra(SwarActivity.KEY_INTENT, jsonDownload.toString());
-        startActivityForResult(intent, SwarActivity.REQUEST_CODE_SWAR);
-        listViewQuray.setEnabled(true);
+                }
+
+                @Override
+                public void onNext(Recitation recitation) {
+                    quraAdapter.addItem(recitation);
+                }
+
+                @Override
+                public void onError(Throwable e) {
+                    Log.e("Error", e.toString());
+                    if (progressDialog != null) {
+                        progressDialog.dismiss();
+                    }
+                }
+
+                @Override
+                public void onComplete() {
+                    if (progressDialog != null) {
+                        progressDialog.dismiss();
+                    }
+                }
+            });
+        }
     }
 
     @Override
     public void onClickItem(int position) {
         super.onClickItem(position);
-        VolleySingleton.getInstance(this).addToRequestQueue(new JsonObjectRequest(data.get(position).getApi_url(), null, new Response.Listener<JSONObject>() {
-            @Override
-            public void onResponse(JSONObject response, Object o) {
-                jsonDownload = response;
-                downloaded = true;
-                if (progressDialog.isShowing() && runing) {
-                    passage();
-                }
-            }
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError volleyError, Object o) {
-                if (progressDialog.isShowing() && runing) {
-                    progressDialog.dismiss();
-                    listViewQuray.setEnabled(true);
-                }
-            }
-        }));
-
-
+        Intent intent = new Intent(RecitationActivity.this, SwarActivity.class);
+        Recitation recitation = (Recitation) quraAdapter.getApiModels().get(position);
+        intent.putExtra("id", recitation.getId());
+        startActivityForResult(intent, SwarActivity.REQUEST_CODE_SWAR);
+        listViewQuray.setEnabled(true);
     }
 }

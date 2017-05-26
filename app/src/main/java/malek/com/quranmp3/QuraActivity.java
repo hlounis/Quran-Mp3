@@ -9,25 +9,28 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.JsonObjectRequest;
-
-import org.json.JSONObject;
-
 import java.util.ArrayList;
+import java.util.List;
 
-import malek.com.quranmp3.models.ApiModel;
-import malek.com.quranmp3.tools.DataParser;
-import malek.com.quranmp3.tools.VolleySingleton;
+import io.reactivex.ObservableSource;
+import io.reactivex.Observer;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.annotations.NonNull;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Function;
+import io.reactivex.schedulers.Schedulers;
+import malek.com.quranmp3.models.Author;
+import malek.com.quranmp3.models.QuarContainer;
+import malek.com.quranmp3.tools.RetrofitSingleton;
 
-public class QuraActivity extends ListViewActivity implements SearchView.OnQueryTextListener {
+public class QuraActivity extends ListViewActivity {
 
 
     private MenuItem searchMenuItem;
     private SearchView mSearchView;
-    private String url;
-    private ApiModel apiModelCurent;
+    private Author authorSelected;
+    private List<Author> authors = new ArrayList<>();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,8 +40,6 @@ public class QuraActivity extends ListViewActivity implements SearchView.OnQuery
             String query = intent.getStringExtra(SearchManager.QUERY);
             doMySearch(query);
         }
-
-
     }
 
     private void doMySearch(String query) {
@@ -52,97 +53,115 @@ public class QuraActivity extends ListViewActivity implements SearchView.OnQuery
         inflater.inflate(R.menu.option, menu);
         searchMenuItem = menu.findItem(R.id.action_search);
         mSearchView = (SearchView) searchMenuItem.getActionView();
-        mSearchView.setOnQueryTextListener(this);
+//        mSearchView.setOnQueryTextListener(this);
         return super.onCreateOptionsMenu(menu);
     }
 
     @Override
     public void setData() {
-        data = DataParser.getInstance().getApiModels();
-        initRecylerView();
+        RetrofitSingleton.getInstance().getApiService().getQuarContainer(364794)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .map(new Function<QuarContainer, List<Author>>() {
+                    @Override
+                    public List<Author> apply(@NonNull QuarContainer quarContainer) throws Exception {
+                        return quarContainer.getAuthors();
+                    }
+                }).flatMap(new Function<List<Author>, ObservableSource<Author>>() {
+            @Override
+            public ObservableSource<Author> apply(@NonNull List<Author> authors) throws Exception {
+                return io.reactivex.Observable.fromIterable(authors);
+            }
+        }).subscribe(new Observer<Author>() {
+            @Override
+            public void onSubscribe(Disposable d) {
+
+            }
+
+            @Override
+            public void onNext(Author author) {
+
+                quraAdapter.addItem(author);
+                authors.add(author);
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                Log.e("Throwable", e.toString());
+            }
+
+            @Override
+            public void onComplete() {
+                downloaded = true;
+            }
+        });
     }
 
 
-    @Override
-    public void passage() {
-        super.passage();
-        progressDialog.dismiss();
-        Intent intent;
-        int requestCode = 9;
-        String key;
-        if (apiModelCurent.getCount() == 1) {
-            intent = new Intent(QuraActivity.this, SwarActivity.class);
-            requestCode = SwarActivity.REQUEST_CODE_SWAR;
-            key = SwarActivity.KEY_INTENT;
-        } else {
-            intent = new Intent(QuraActivity.this, RecitationActivity.class);
-            key = RecitationActivity.KEY_INTENT;
-        }
-        intent.putExtra(key, jsonDownload.toString());
-        startActivityForResult(intent, requestCode);
-    }
-
-
+    //    @Override
+//    public void passage() {
+//        super.passage();
+//        progressDialog.dismiss();
+//        Intent intent;
+//        int requestCode = 9;
+//        String key;
+//        if (authorSelected.getCount() == 1) {
+//            intent = new Intent(QuraActivity.this, SwarActivity.class);
+//            requestCode = SwarActivity.REQUEST_CODE_SWAR;
+//            key = SwarActivity.KEY_INTENT;
+//        } else {
+//            intent = new Intent(QuraActivity.this, RecitationActivity.class);
+//            key = RecitationActivity.KEY_INTENT;
+//        }
+//        intent.putExtra(key, jsonDownload.toString());
+//        startActivityForResult(intent, requestCode);
+//    }
+//
+//
     @Override
     public void onClickItem(int position) {
         super.onClickItem(position);
-        apiModelCurent = quraAdapter.getApiModels().get(position);
-        if (quraAdapter.getApiModels().get(position).getCount() == 1) {
-            url = apiModelCurent.getApi_url().substring(0, apiModelCurent.getApi_url().indexOf("get-author"));
-            url = url + "get-recitation/" + apiModelCurent.getUniqueResitance() + "/ar/json/";
+        authorSelected = authors.get(position);
+        Log.d("clicked", authorSelected.toString());
+        if (authorSelected.getRecitations_info().getCount() == 1) {
+            Intent intent = new Intent(QuraActivity.this, SwarActivity.class);
+            intent.putExtra("id", authorSelected.getRecitations_info().getRecitations_ids().get(0));
+            startActivityForResult(intent, 9);
         } else {
-            url = apiModelCurent.getApi_url();
+            Intent intent = new Intent(QuraActivity.this, RecitationActivity.class);
+            intent.putExtra("id", authorSelected.getId());
+            startActivityForResult(intent, 9);
         }
-        VolleySingleton.getInstance(this).addToRequestQueue(new JsonObjectRequest(url, null, new Response.Listener<JSONObject>() {
-            @Override
-            public void onResponse(JSONObject response, Object o) {
-                jsonDownload = response;
-                downloaded = true;
-                if (progressDialog.isShowing() && runing) {
-                    passage();
-                    listViewQuray.setEnabled(true);
-                }
-            }
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError volleyError, Object o) {
-                if (runing) {
-                    if (progressDialog.isShowing())
-                        progressDialog.dismiss();
-                    listViewQuray.setEnabled(true);
-                }
-            }
-        }));
     }
 
 
-    @Override
-    public boolean onQueryTextSubmit(String query) {
-        return false;
-    }
+//    @Override
+//    public boolean onQueryTextSubmit(String query) {
+//        return false;
+//    }
 
-    @Override
-    public boolean onQueryTextChange(String newText) {
-        Log.d("newText", newText);
-        ArrayList<ApiModel> qurasFiltred = new ArrayList<>();
-        if (newText.length() > 0) {
-
-            for (ApiModel apiModel : data) {
-                if (apiModel.getTitle().contains(newText)) {
-
-                    qurasFiltred.add(apiModel);
-
-                }
-            }
-            quraAdapter.setApiModels(qurasFiltred);
-            quraAdapter.notifyDataSetChanged();
-
-        } else {
-            quraAdapter.setApiModels(data);
-            quraAdapter.notifyDataSetChanged();
-
-        }
-
-        return false;
-    }
+//    @Override
+//    public boolean onQueryTextChange(String newText) {
+//        Log.d("newText", newText);
+//        ArrayList<Author> qurasFiltred = new ArrayList<>();
+//        if (newText.length() > 0) {
+//
+//            for (ApiModel apiModel : quraAdapter.getApiModels()) {
+//                if (apiModel.getTitle().contains(newText)) {
+//
+//                    qurasFiltred.add((Author) apiModel);
+//
+//                }
+//            }
+//            quraAdapter.setApiModels(qurasFiltred);
+//            quraAdapter.notifyDataSetChanged();
+//
+//        } else {
+//            quraAdapter.setApiModels(data);
+//            quraAdapter.notifyDataSetChanged();
+//
+//        }
+//
+//        return false;
+//    }
 }

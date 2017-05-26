@@ -26,18 +26,26 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
-import malek.com.quranmp3.models.ApiModel;
+import io.reactivex.Observable;
+import io.reactivex.ObservableSource;
+import io.reactivex.Observer;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.annotations.NonNull;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Function;
+import io.reactivex.schedulers.Schedulers;
+import malek.com.quranmp3.models.Attachment;
+import malek.com.quranmp3.models.SawrContainer;
 import malek.com.quranmp3.tools.NotifcationTools;
-import malek.com.quranmp3.tools.Urls;
+import malek.com.quranmp3.tools.RetrofitSingleton;
 
 public class SwarActivity extends ListViewActivity implements AudioManager.OnAudioFocusChangeListener, MediaPlayer.OnPreparedListener, DialogInterface.OnDismissListener, SeekBar.OnSeekBarChangeListener, View.OnClickListener, MediaPlayer.OnErrorListener, SearchView.OnQueryTextListener {
 
     public final static int REQUEST_CODE_SWAR = 10;
-    public static final String KEY_INTENT = "JsonSwar";
     public final static String PREC_NOTIF = "prec";
     public final static String NEXT_NOTIF = "next";
     public final static String PLAY_NOTIF = "play";
@@ -106,15 +114,44 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
     }
 
     @Override
-    public void setJsonObject() {
-        super.setJsonObject();
-        jsonDownload = getJsonFromIntent(KEY_INTENT);
-    }
-
-    @Override
     public void setData() {
-        if (jsonDownload != null)
-            creatlistAsyn(Urls.cle_Swar, Urls.cle_Swar_Url);
+        getId();
+        if (id != null) {
+            RetrofitSingleton.getInstance().getApiService().getSawrContainer(id)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .map(new Function<SawrContainer, List<Attachment>>() {
+                        @Override
+                        public List<Attachment> apply(@NonNull SawrContainer sawrContainer) throws Exception {
+                            return sawrContainer.getAttachments();
+                        }
+                    }).flatMap(new Function<List<Attachment>, ObservableSource<Attachment>>() {
+                @Override
+                public ObservableSource<Attachment> apply(@NonNull List<Attachment> attachments) throws Exception {
+                    return Observable.fromIterable(attachments);
+                }
+            }).safeSubscribe(new Observer<Attachment>() {
+                @Override
+                public void onSubscribe(Disposable d) {
+
+                }
+
+                @Override
+                public void onNext(Attachment attachment) {
+                    quraAdapter.addItem(attachment);
+                }
+
+                @Override
+                public void onError(Throwable e) {
+
+                }
+
+                @Override
+                public void onComplete() {
+
+                }
+            });
+        }
 
     }
 
@@ -137,7 +174,9 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
         mediaPlayer = new MediaPlayer();
         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
         try {
-            mediaPlayer.setDataSource(quraAdapter.getApiModels().get(position).getApi_url());
+            Attachment attachment = (Attachment) quraAdapter.getApiModels().get(position);
+            Log.e("attachement", attachment.toString());
+            mediaPlayer.setDataSource(attachment.getUrl());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -147,7 +186,6 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
         progressDialog.setMessage("Loading...");
         progressDialog.setCancelable(false);
         progressDialog.show();
-
         mediaPlayer.prepareAsync();
         mediaPlayer.setOnPreparedListener(this);
         mediaPlayer.setOnErrorListener(this);
@@ -239,15 +277,16 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
         countDownTimerPlayer.cancel();
         seekBarAudio.setProgress(0);
         formatageTimer(0);
-        if (positionSelected >= data.size())
+        if (positionSelected >= quraAdapter.getApiModels().size())
             positionSelected = 0;
         if (positionSelected < 0)
-            positionSelected = data.size() - 1;
-        if (data.get(positionSelected) != null) {
-            titreAudio.setText(data.get(positionSelected).getTitle());
+            positionSelected = quraAdapter.getApiModels().size() - 1;
+        if (quraAdapter.getApiModels().get(positionSelected) != null) {
+            titreAudio.setText(quraAdapter.getApiModels().get(positionSelected).getTitle());
             mediaPlayer.reset();
             try {
-                mediaPlayer.setDataSource(this, Uri.parse(data.get(positionSelected).getApi_url()));
+
+                mediaPlayer.setDataSource(this, Uri.parse(((Attachment) quraAdapter.getApiModels().get(positionSelected)).getUrl()));
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -367,24 +406,24 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
     @Override
     public boolean onQueryTextChange(String newText) {
         Log.d("newText", newText);
-        ArrayList<ApiModel> qurasFiltred = new ArrayList<>();
-        if (newText.length() > 0) {
-
-            for (ApiModel apiModel : data) {
-                if (apiModel.getTitle().contains(newText)) {
-
-                    qurasFiltred.add(apiModel);
-
-                }
-            }
-            quraAdapter.setApiModels(qurasFiltred);
-            quraAdapter.notifyDataSetChanged();
-
-        } else {
-            quraAdapter.setApiModels(data);
-            quraAdapter.notifyDataSetChanged();
-
-        }
+//        ArrayList<ApiModel> qurasFiltred = new ArrayList<>();
+//        if (newText.length() > 0) {
+//
+//            for (ApiModel apiModel : data) {
+//                if (apiModel.getTitle().contains(newText)) {
+//
+//                    qurasFiltred.add(apiModel);
+//
+//                }
+//            }
+//            quraAdapter.setApiModels(qurasFiltred);
+//            quraAdapter.notifyDataSetChanged();
+//
+//        } else {
+//            quraAdapter.setApiModels(data);
+//            quraAdapter.notifyDataSetChanged();
+//
+//        }
         return false;
     }
 
