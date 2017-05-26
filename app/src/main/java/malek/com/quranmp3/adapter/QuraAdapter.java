@@ -29,6 +29,10 @@ public class QuraAdapter extends RecyclerView.Adapter<QuraAdapter.ViewHolder> {
         return apiModels;
     }
 
+    public void setApiModels(List<ApiModel> apiModels) {
+        this.apiModels = apiModels;
+    }
+
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_list, parent, false);
@@ -54,6 +58,10 @@ public class QuraAdapter extends RecyclerView.Adapter<QuraAdapter.ViewHolder> {
         notifyDataSetChanged();
     }
 
+    public void clearAdapter() {
+        apiModels.clear();
+        notifyDataSetChanged();
+    }
     @Override
     public int getItemCount() {
         return apiModels.size();

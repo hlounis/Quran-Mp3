@@ -21,8 +21,6 @@ public class RetrofitSingleton {
                 .addConverterFactory(GsonConverterFactory.create())
                 .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
                 .build();
-
-
         apiService = retrofit.create(ApiService.class);
 
     }

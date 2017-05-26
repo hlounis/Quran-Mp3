@@ -12,25 +12,24 @@ import android.view.MenuItem;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.reactivex.Observable;
 import io.reactivex.ObservableSource;
 import io.reactivex.Observer;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.Function;
+import io.reactivex.functions.Predicate;
 import io.reactivex.schedulers.Schedulers;
 import malek.com.quranmp3.models.Author;
 import malek.com.quranmp3.models.QuarContainer;
 import malek.com.quranmp3.tools.RetrofitSingleton;
 
-public class QuraActivity extends ListViewActivity {
+public class QuraActivity extends ListViewActivity implements SearchView.OnQueryTextListener {
 
 
-    private MenuItem searchMenuItem;
-    private SearchView mSearchView;
-    private Author authorSelected;
+    private final static String TAG = QuraActivity.class.getSimpleName();
     private List<Author> authors = new ArrayList<>();
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,9 +50,9 @@ public class QuraActivity extends ListViewActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.option, menu);
-        searchMenuItem = menu.findItem(R.id.action_search);
-        mSearchView = (SearchView) searchMenuItem.getActionView();
-//        mSearchView.setOnQueryTextListener(this);
+        MenuItem searchMenuItem = menu.findItem(R.id.action_search);
+        SearchView mSearchView = (SearchView) searchMenuItem.getActionView();
+        mSearchView.setOnQueryTextListener(this);
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -80,9 +79,8 @@ public class QuraActivity extends ListViewActivity {
 
             @Override
             public void onNext(Author author) {
-
-                quraAdapter.addItem(author);
                 authors.add(author);
+                quraAdapter.addItem(author);
             }
 
             @Override
@@ -98,31 +96,10 @@ public class QuraActivity extends ListViewActivity {
     }
 
 
-    //    @Override
-//    public void passage() {
-//        super.passage();
-//        progressDialog.dismiss();
-//        Intent intent;
-//        int requestCode = 9;
-//        String key;
-//        if (authorSelected.getCount() == 1) {
-//            intent = new Intent(QuraActivity.this, SwarActivity.class);
-//            requestCode = SwarActivity.REQUEST_CODE_SWAR;
-//            key = SwarActivity.KEY_INTENT;
-//        } else {
-//            intent = new Intent(QuraActivity.this, RecitationActivity.class);
-//            key = RecitationActivity.KEY_INTENT;
-//        }
-//        intent.putExtra(key, jsonDownload.toString());
-//        startActivityForResult(intent, requestCode);
-//    }
-//
-//
     @Override
     public void onClickItem(int position) {
         super.onClickItem(position);
-        authorSelected = authors.get(position);
-        Log.d("clicked", authorSelected.toString());
+        Author authorSelected = (Author) quraAdapter.getApiModels().get(position);
         if (authorSelected.getRecitations_info().getCount() == 1) {
             Intent intent = new Intent(QuraActivity.this, SwarActivity.class);
             intent.putExtra("id", authorSelected.getRecitations_info().getRecitations_ids().get(0));
@@ -135,33 +112,78 @@ public class QuraActivity extends ListViewActivity {
     }
 
 
-//    @Override
-//    public boolean onQueryTextSubmit(String query) {
-//        return false;
-//    }
+    @Override
+    public boolean onQueryTextSubmit(String query) {
+        return false;
+    }
 
-//    @Override
-//    public boolean onQueryTextChange(String newText) {
-//        Log.d("newText", newText);
-//        ArrayList<Author> qurasFiltred = new ArrayList<>();
-//        if (newText.length() > 0) {
-//
-//            for (ApiModel apiModel : quraAdapter.getApiModels()) {
-//                if (apiModel.getTitle().contains(newText)) {
-//
-//                    qurasFiltred.add((Author) apiModel);
-//
-//                }
-//            }
-//            quraAdapter.setApiModels(qurasFiltred);
-//            quraAdapter.notifyDataSetChanged();
-//
-//        } else {
-//            quraAdapter.setApiModels(data);
-//            quraAdapter.notifyDataSetChanged();
-//
-//        }
-//
-//        return false;
-//    }
+
+    @Override
+    public boolean onQueryTextChange(final String newText) {
+        Log.d("newText", newText);
+        if (newText.length() > 0) {
+            Observable.fromIterable(authors)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .filter(new Predicate<Author>() {
+                        @Override
+                        public boolean test(@NonNull Author apiModel) throws Exception {
+                            String testString = apiModel.getTitle().substring(0, newText.length());
+                            if (testString.contains("أ")) {
+                                testString = testString.replace("أ", "ا");
+                            }
+                            return testString.equals(newText);
+                        }
+                    }).safeSubscribe(new Observer<Author>() {
+                @Override
+                public void onSubscribe(Disposable d) {
+                    quraAdapter.clearAdapter();
+                }
+
+                @Override
+                public void onNext(Author apiModel) {
+                    quraAdapter.addItem(apiModel);
+
+                }
+
+                @Override
+                public void onError(Throwable e) {
+                    Log.e(TAG, e.toString());
+                }
+
+                @Override
+                public void onComplete() {
+                }
+            });
+
+
+        } else {
+            Log.d(TAG, "empty");
+            quraAdapter.clearAdapter();
+            Observable.fromIterable(authors).safeSubscribe(new Observer<Author>() {
+                @Override
+                public void onSubscribe(Disposable d) {
+
+                }
+
+                @Override
+                public void onNext(Author author) {
+                    quraAdapter.addItem(author);
+                }
+
+                @Override
+                public void onError(Throwable e) {
+                    Log.e(TAG, e.toString());
+                }
+
+                @Override
+                public void onComplete() {
+
+                }
+            });
+
+        }
+
+        return false;
+    }
 }

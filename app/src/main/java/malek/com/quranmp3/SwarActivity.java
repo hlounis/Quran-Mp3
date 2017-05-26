@@ -26,6 +26,7 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
@@ -37,6 +38,7 @@ import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.Function;
+import io.reactivex.functions.Predicate;
 import io.reactivex.schedulers.Schedulers;
 import malek.com.quranmp3.models.Attachment;
 import malek.com.quranmp3.models.SawrContainer;
@@ -49,6 +51,7 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
     public final static String PREC_NOTIF = "prec";
     public final static String NEXT_NOTIF = "next";
     public final static String PLAY_NOTIF = "play";
+    public static final String TAG = SwarActivity.class.getSimpleName();
     private int positionSelected;
     private Dialog audioDialog;
     private TextView titreAudio;
@@ -61,6 +64,7 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
     private boolean prepared;
     private NotifcationTools notifcationTools = null;
     private AudioManager mAudioManager;
+    private List<Attachment> swars = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -138,12 +142,14 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
 
                 @Override
                 public void onNext(Attachment attachment) {
+                    Log.e(TAG, attachment.getTitle());
                     quraAdapter.addItem(attachment);
+                    swars.add(attachment);
                 }
 
                 @Override
                 public void onError(Throwable e) {
-
+                    Log.e(TAG, e.toString());
                 }
 
                 @Override
@@ -404,26 +410,67 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
     }
 
     @Override
-    public boolean onQueryTextChange(String newText) {
-        Log.d("newText", newText);
-//        ArrayList<ApiModel> qurasFiltred = new ArrayList<>();
-//        if (newText.length() > 0) {
-//
-//            for (ApiModel apiModel : data) {
-//                if (apiModel.getTitle().contains(newText)) {
-//
-//                    qurasFiltred.add(apiModel);
-//
-//                }
-//            }
-//            quraAdapter.setApiModels(qurasFiltred);
-//            quraAdapter.notifyDataSetChanged();
-//
-//        } else {
-//            quraAdapter.setApiModels(data);
-//            quraAdapter.notifyDataSetChanged();
-//
-//        }
+    public boolean onQueryTextChange(final String newText) {
+
+        if (newText.length() > 0) {
+            Observable.fromIterable(swars)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .filter(new Predicate<Attachment>() {
+                        @Override
+                        public boolean test(@NonNull Attachment apiModel) throws Exception {
+                            String testString = apiModel.getTitle().replace("سورة ", "").substring(0, newText.length());
+                            if (testString.contains("أ")) {
+                                testString = testString.replace("أ", "ا");
+                            }
+                            return testString.equals(newText);
+                        }
+                    }).safeSubscribe(new Observer<Attachment>() {
+                @Override
+                public void onSubscribe(Disposable d) {
+                    quraAdapter.clearAdapter();
+                }
+
+                @Override
+                public void onNext(Attachment apiModel) {
+                    quraAdapter.addItem(apiModel);
+
+                }
+
+                @Override
+                public void onError(Throwable e) {
+                }
+
+                @Override
+                public void onComplete() {
+                }
+            });
+
+
+        } else {
+            quraAdapter.clearAdapter();
+            Observable.fromIterable(swars).safeSubscribe(new Observer<Attachment>() {
+                @Override
+                public void onSubscribe(Disposable d) {
+
+                }
+
+                @Override
+                public void onNext(Attachment attachment) {
+                    quraAdapter.addItem(attachment);
+                }
+
+                @Override
+                public void onError(Throwable e) {
+                    Log.e(TAG, e.toString());
+                }
+
+                @Override
+                public void onComplete() {
+
+                }
+            });
+        }
         return false;
     }
 
