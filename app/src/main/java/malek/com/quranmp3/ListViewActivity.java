@@ -7,6 +7,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.widget.ProgressBar;
 
 import malek.com.quranmp3.adapter.QuraAdapter;
 import malek.com.quranmp3.tools.RecylerViewClickItem;
@@ -18,14 +19,21 @@ public class ListViewActivity extends AppCompatActivity implements RecylerViewCl
     protected boolean downloaded = false;
     protected QuraAdapter quraAdapter;
     protected Integer id;
+    protected ProgressBar progressBar;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_qura);
+        progressBar = (ProgressBar) findViewById(R.id.progress);
+        setViewModel();
         initRecylerView();
         setData();
+
+    }
+
+    public void setViewModel() {
 
     }
 
@@ -49,6 +57,7 @@ public class ListViewActivity extends AppCompatActivity implements RecylerViewCl
         listViewQuray.setLayoutManager(new LinearLayoutManager(this));
         quraAdapter = new QuraAdapter(this);
         listViewQuray.setAdapter(quraAdapter);
+
 
     }
 

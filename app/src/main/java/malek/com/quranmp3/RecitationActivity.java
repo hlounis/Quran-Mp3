@@ -3,6 +3,7 @@ package malek.com.quranmp3;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 
 import java.util.List;
 
@@ -50,11 +51,14 @@ public class RecitationActivity extends ListViewActivity {
 
                 @Override
                 public void onNext(Recitation recitation) {
+                    progressBar.setVisibility(View.GONE);
                     quraAdapter.addItem(recitation);
                 }
 
                 @Override
                 public void onError(Throwable e) {
+                    progressBar.setVisibility(View.GONE);
+
                     Log.e("Error", e.toString());
                     if (progressDialog != null) {
                         progressDialog.dismiss();

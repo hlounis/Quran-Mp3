@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.databinding.DataBindingUtil;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -16,6 +17,7 @@ import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -40,6 +42,7 @@ import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.Function;
 import io.reactivex.functions.Predicate;
 import io.reactivex.schedulers.Schedulers;
+import malek.com.quranmp3.databinding.DialogPlayerBinding;
 import malek.com.quranmp3.models.Attachment;
 import malek.com.quranmp3.models.SawrContainer;
 import malek.com.quranmp3.tools.NotifcationTools;
@@ -54,7 +57,6 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
     public static final String TAG = SwarActivity.class.getSimpleName();
     private int positionSelected;
     private Dialog audioDialog;
-    private TextView titreAudio;
     private TextView timerAudio;
     private SeekBar seekBarAudio;
     private MediaPlayer mediaPlayer;
@@ -65,6 +67,7 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
     private NotifcationTools notifcationTools = null;
     private AudioManager mAudioManager;
     private List<Attachment> swars = new ArrayList<>();
+    private DialogPlayerBinding binding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -142,18 +145,19 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
 
                 @Override
                 public void onNext(Attachment attachment) {
-                    Log.e(TAG, attachment.getTitle());
                     quraAdapter.addItem(attachment);
                     swars.add(attachment);
                 }
 
                 @Override
                 public void onError(Throwable e) {
+                    progressBar.setVisibility(View.GONE);
                     Log.e(TAG, e.toString());
                 }
 
                 @Override
                 public void onComplete() {
+                    progressBar.setVisibility(View.GONE);
 
                 }
             });
@@ -166,14 +170,16 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
         listViewQuray.setEnabled(false);
         positionSelected = position;
         audioDialog = new Dialog(this);
-        audioDialog.setContentView(R.layout.dialog_player);
+        binding = DataBindingUtil.inflate(LayoutInflater.from(this), R.layout.dialog_player, null, false);
+        audioDialog.setContentView(binding.getRoot());
+        binding.setSwar((Attachment) quraAdapter.getApiModels().get(positionSelected));
         audioDialog.getWindow().setGravity(Gravity.BOTTOM);
+
         audioDialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.WRAP_CONTENT);
         //titre de l'audio
-        titreAudio = (TextView) audioDialog.findViewById(R.id.titreAudio);
         timerAudio = (TextView) audioDialog.findViewById(R.id.timerAudio);
-        titreAudio.setText(quraAdapter.getApiModels().get(position).getTitle());
+//        titreAudio.setText(quraAdapter.getApiModels().get(position).getTitle());
         // seekBar de l'audio
         seekBarAudio = (SeekBar) audioDialog.findViewById(R.id.seekBarAudio);
         audioDialog.setCancelable(false);
@@ -181,7 +187,6 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
         try {
             Attachment attachment = (Attachment) quraAdapter.getApiModels().get(position);
-            Log.e("attachement", attachment.toString());
             mediaPlayer.setDataSource(attachment.getUrl());
         } catch (IOException e) {
             e.printStackTrace();
@@ -230,7 +235,7 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
         if (notifcationTools == null) {
             notifcationTools = new NotifcationTools(getApplicationContext());
         }
-        notifcationTools.createNotif(titreAudio.getText().toString());
+        notifcationTools.createNotif(quraAdapter.getApiModels().get(positionSelected).getTitle());
         setUpNotifactionBrodcastReciver();
         if (progressDialog.isShowing()) {
             progressDialog.dismiss();
@@ -288,7 +293,11 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
         if (positionSelected < 0)
             positionSelected = quraAdapter.getApiModels().size() - 1;
         if (quraAdapter.getApiModels().get(positionSelected) != null) {
-            titreAudio.setText(quraAdapter.getApiModels().get(positionSelected).getTitle());
+            binding.setSwar((Attachment) quraAdapter.getApiModels().get(positionSelected));
+            if (notifcationTools == null) {
+                notifcationTools = new NotifcationTools(getApplicationContext());
+            }
+            notifcationTools.createNotif(quraAdapter.getApiModels().get(positionSelected).getTitle());
             mediaPlayer.reset();
             try {
 
@@ -428,21 +437,25 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
                     }).safeSubscribe(new Observer<Attachment>() {
                 @Override
                 public void onSubscribe(Disposable d) {
+
                     quraAdapter.clearAdapter();
                 }
 
                 @Override
                 public void onNext(Attachment apiModel) {
+                    progressBar.setVisibility(View.GONE);
                     quraAdapter.addItem(apiModel);
 
                 }
 
                 @Override
                 public void onError(Throwable e) {
+                    Log.e(TAG, e.toString());
                 }
 
                 @Override
                 public void onComplete() {
+                    progressBar.setVisibility(View.GONE);
                 }
             });
 
@@ -483,5 +496,9 @@ public class SwarActivity extends ListViewActivity implements AudioManager.OnAud
     public void onDestroy() {
         super.onDestroy();
         mAudioManager.abandonAudioFocus(this);
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+        }
+
     }
 }

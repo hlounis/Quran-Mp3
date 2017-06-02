@@ -1,15 +1,16 @@
 package malek.com.quranmp3.adapter;
 
+import android.databinding.DataBindingUtil;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import malek.com.quranmp3.R;
+import malek.com.quranmp3.databinding.ItemListBinding;
 import malek.com.quranmp3.models.ApiModel;
 import malek.com.quranmp3.tools.RecylerViewClickItem;
 
@@ -29,20 +30,16 @@ public class QuraAdapter extends RecyclerView.Adapter<QuraAdapter.ViewHolder> {
         return apiModels;
     }
 
-    public void setApiModels(List<ApiModel> apiModels) {
-        this.apiModels = apiModels;
-    }
-
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_list, parent, false);
-        return new ViewHolder(view);
+        ItemListBinding listItemBinding = DataBindingUtil.inflate(LayoutInflater.from(parent.getContext()), R.layout.item_list, parent, false);
+        return new ViewHolder(listItemBinding);
     }
 
     @Override
     public void onBindViewHolder(final ViewHolder holder, final int position) {
-        holder.titre.setText(apiModels.get(position).getTitle());
-        holder.itemView.setOnClickListener(new View.OnClickListener() {
+        holder.listBinding.setItem(apiModels.get(position));
+        holder.listBinding.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 if (recylerViewClickItem != null)
@@ -62,17 +59,18 @@ public class QuraAdapter extends RecyclerView.Adapter<QuraAdapter.ViewHolder> {
         apiModels.clear();
         notifyDataSetChanged();
     }
+
     @Override
     public int getItemCount() {
         return apiModels.size();
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView titre;
+        ItemListBinding listBinding;
 
-        public ViewHolder(View itemView) {
-            super(itemView);
-            titre = (TextView) itemView.findViewById(R.id.titre);
+        public ViewHolder(ItemListBinding listBinding) {
+            super(listBinding.getRoot());
+            this.listBinding = listBinding;
 
         }
     }

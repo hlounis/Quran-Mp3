@@ -8,6 +8,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -79,12 +80,15 @@ public class QuraActivity extends ListViewActivity implements SearchView.OnQuery
 
             @Override
             public void onNext(Author author) {
+                progressBar.setVisibility(View.GONE);
                 authors.add(author);
                 quraAdapter.addItem(author);
             }
 
             @Override
             public void onError(Throwable e) {
+                progressBar.setVisibility(View.GONE);
+
                 Log.e("Throwable", e.toString());
             }
 
